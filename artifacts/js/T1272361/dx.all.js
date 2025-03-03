@@ -256768,10 +256768,10 @@ const dxBarGauge = exports.dxBarGauge = _base_gauge.BaseGauge.inherit({
       smallerGroup.push(bars.bottom);
     }
     return {
-      left: bars.left,
-      right: bars.right
-      // left: bars.left.sort((a, b) => a._settings.outerRadius - b._settings.outerRadius),
-      // right: bars.right.sort((a, b) => a._settings.outerRadius - b._settings.outerRadius),
+      // left: bars.left,
+      // right: bars.right,
+      left: bars.left.sort((a, b) => b._settings.outerRadius - a._settings.outerRadius),
+      right: bars.right.sort((a, b) => b._settings.outerRadius - a._settings.outerRadius)
     };
   },
   _dividePoints() {
