@@ -9,4 +9,4 @@
 25.1 T1247739 (contextMenu submenu): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1247739/dx.all.js
 
 ### css
-25.1 stepper https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/css/stepper/dx.fluent.blue.light.js
+25.1 stepper https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/css/stepper/dx.fluent.blue.light.css
