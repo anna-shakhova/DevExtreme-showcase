@@ -1,7 +1,7 @@
 /*!
 * DevExtreme (dx.all.js)
 * Version: 25.1.0
-* Build date: Tue Apr 08 2025
+* Build date: Wed Apr 09 2025
 *
 * Copyright (c) 2012 - 2025 Developer Express Inc. ALL RIGHTS RESERVED
 * Read about DevExtreme licensing here: https://js.devexpress.com/Licensing/
@@ -37213,7 +37213,7 @@ class ColumnsController extends _m_modules.default.Controller {
     }
   }
   publicMethods() {
-    return ['addColumn', 'deleteColumn', 'columnOption', 'columnCount', 'clearSorting', 'clearGrouping', 'getVisibleColumns', 'getVisibleColumnIndex'];
+    return ['addColumn', 'deleteColumn', 'columnOption', 'columnCount', 'clearSorting', 'clearGrouping', 'getVisibleColumns', 'getVisibleColumnIndex', 'getColumns'];
   }
   applyDataSource(dataSource, forceApplying, isApplyingUserState) {
     const that = this;
@@ -49881,6 +49881,7 @@ class FocusController extends _m_modules.default.ViewController {
     const isAutoNavigate = that.isAutoNavigateToFocusedRow();
     // @ts-expect-error
     const d = new _deferred.Deferred();
+    const rowsView = this.getView('rowsView');
     if (key === undefined || !this.getDataController().dataSource()) {
       return d.reject().promise();
     }
@@ -49904,7 +49905,9 @@ class FocusController extends _m_modules.default.ViewController {
           }).fail(d.reject);
         } else {
           this.getDataController().pageIndex(pageIndex).done(() => {
-            that._navigateTo(key, d, needFocusRow);
+            rowsView.waitAsyncTemplates(true).done(() => {
+              that._navigateTo(key, d, needFocusRow);
+            });
           }).fail(d.reject);
         }
       }).fail(d.reject);
@@ -61881,7 +61884,7 @@ class ColumnsView extends (0, _m_column_state_mixin.ColumnStateMixin)(_m_modules
     // @ts-expect-error
     const result = new _deferred.Deferred();
     const needWaitAsyncTemplates = forceWaiting || this.needWaitAsyncTemplates();
-    if (!needWaitAsyncTemplates) {
+    if (!needWaitAsyncTemplates || !(0, _type.isDefined)(this._templateDeferreds)) {
       return result.resolve();
     }
     const waitTemplatesRecursion = () => _deferred.when.apply(this, Array.from(this._templateDeferreds)).done(() => {
@@ -78002,12 +78005,30 @@ _m_core.default.registerModule('validating', {
 
 
 var _extend = __webpack_require__(52576);
+var _m_utils = _interopRequireDefault(__webpack_require__(53226));
 var _m_virtual_scrolling = __webpack_require__(21640);
 var _m_data_source_adapter = _interopRequireDefault(__webpack_require__(39051));
 var _m_core = _interopRequireDefault(__webpack_require__(99477));
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); } /* eslint-disable max-classes-per-file */
 const oldDefaultOptions = _m_virtual_scrolling.virtualScrollingModule.defaultOptions;
+_m_virtual_scrolling.virtualScrollingModule.extenders.views.rowsView = Base => class TreeListVirtualScrollingRowsViewExtender extends (0, _m_virtual_scrolling.rowsView)(Base) {
+  _handleDataChanged(e) {
+    const {
+      operationTypes
+    } = e;
+    if (e !== null && e !== void 0 && e.isDataChanged && _m_utils.default.isVirtualRowRendering(this) && operationTypes) {
+      const {
+        fullReload,
+        pageIndex
+      } = operationTypes;
+      if (!fullReload && pageIndex) {
+        this._updateContentPosition();
+      }
+    }
+    super._handleDataChanged(e);
+  }
+};
 _m_virtual_scrolling.virtualScrollingModule.extenders.controllers.data = Base => class TreeListVirtualScrollingDataControllerExtender extends (0, _m_virtual_scrolling.data)(Base) {
   _loadOnOptionChange() {
     var _this$_dataSource;
@@ -83748,10 +83769,11 @@ var _config = _interopRequireDefault(__webpack_require__(66636));
 var _index = __webpack_require__(78133);
 var _m_appointment_data_source = __webpack_require__(12524);
 var _m_appointment_filter = __webpack_require__(42648);
+var _m_appointment_filter_virtual = __webpack_require__(55964);
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }
-const FilterStrategies = {
-  virtual: 'virtual',
-  standard: 'standard'
+const FilterStrategyMap = {
+  [_m_appointment_filter_virtual.AppointmentFilterVirtualStrategy.strategyName]: _m_appointment_filter_virtual.AppointmentFilterVirtualStrategy,
+  [_m_appointment_filter.AppointmentFilterBaseStrategy.strategyName]: _m_appointment_filter.AppointmentFilterBaseStrategy
 };
 class AppointmentDataProvider {
   constructor(options) {
@@ -83769,10 +83791,10 @@ class AppointmentDataProvider {
     return !!this.dataSource;
   }
   get filterStrategyName() {
-    return this.options.getIsVirtualScrolling() ? FilterStrategies.virtual : FilterStrategies.standard;
+    return this.options.getIsVirtualScrolling() ? _m_appointment_filter_virtual.AppointmentFilterVirtualStrategy.strategyName : _m_appointment_filter.AppointmentFilterBaseStrategy.strategyName;
   }
   getFilterStrategy() {
-    if (!this.filterStrategy || this.filterStrategy.strategyName !== this.filterStrategyName) {
+    if (!this.filterStrategy || this.filterStrategy.constructor.strategyName !== this.filterStrategyName) {
       this.initFilterStrategy();
     }
     return this.filterStrategy;
@@ -83796,7 +83818,8 @@ class AppointmentDataProvider {
       viewDataProvider: this.options.getViewDataProvider,
       allDayPanelMode: this.options.allDayPanelMode
     };
-    this.filterStrategy = this.filterStrategyName === FilterStrategies.virtual ? new _m_appointment_filter.AppointmentFilterVirtualStrategy(filterOptions) : new _m_appointment_filter.AppointmentFilterBaseStrategy(filterOptions);
+    const strategy = new FilterStrategyMap[this.filterStrategyName](filterOptions);
+    this.filterStrategy = strategy;
   }
   setDataSource(dataSource) {
     this.dataSource = dataSource;
@@ -83832,9 +83855,6 @@ class AppointmentDataProvider {
   }
   filterLoadedAppointments(filterOption, preparedItems) {
     return this.getFilterStrategy().filterLoadedAppointments(filterOption, preparedItems);
-  }
-  calculateAppointmentEndDate(isAllDay, startDate) {
-    return this.getFilterStrategy().calculateAppointmentEndDate(isAllDay, startDate);
   }
   // Appointment data source mappings
   cleanState() {
@@ -83979,7 +83999,7 @@ exports.AppointmentDataSource = AppointmentDataSource;
 Object.defineProperty(exports, "__esModule", ({
   value: true
 }));
-exports.AppointmentFilterVirtualStrategy = exports.AppointmentFilterBaseStrategy = void 0;
+exports.AppointmentFilterBaseStrategy = void 0;
 var _query = _interopRequireDefault(__webpack_require__(30771));
 var _array = __webpack_require__(94487);
 var _date = _interopRequireDefault(__webpack_require__(41380));
@@ -83989,24 +84009,15 @@ var _date2 = __webpack_require__(55594);
 var _index = __webpack_require__(34396);
 var _m_appointment_adapter = __webpack_require__(66823);
 var _m_recurrence = __webpack_require__(55122);
-var _m_utils = __webpack_require__(45629);
-var _m_utils2 = __webpack_require__(2807);
+var _m_utils = __webpack_require__(2807);
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }
-function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); } /* eslint-disable max-classes-per-file */
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 // TODO Vinogradov refactoring: this module should be refactored :)
 const toMs = _date.default.dateToMilliseconds;
-const FilterStrategies = {
-  virtual: 'virtual',
-  standard: 'standard'
-};
 class AppointmentFilterBaseStrategy {
   constructor(options) {
     this.options = options;
     this.dataAccessors = this.options.dataAccessors;
-    this._init();
-  }
-  get strategyName() {
-    return FilterStrategies.standard;
   }
   get timeZoneCalculator() {
     return this.options.timeZoneCalculator;
@@ -84054,9 +84065,6 @@ class AppointmentFilterBaseStrategy {
     const result = this.options[name];
     return typeof result === 'function' ? result() : result;
   }
-  _init() {
-    this.setDataAccessors(this.dataAccessors);
-  }
   filter(preparedItems) {
     const [min, max] = this.dateRange;
     const {
@@ -84079,22 +84087,10 @@ class AppointmentFilterBaseStrategy {
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   hasAllDayAppointments(filteredItems, preparedItems) {
-    const adapters = filteredItems.map(item => (0, _m_appointment_adapter.createAppointmentAdapter)(item, this.dataAccessors, this.timeZoneCalculator));
-    let result = false;
-    // @ts-expect-error
-    (0, _iterator.each)(adapters, (_, item) => {
-      if ((0, _index.getAppointmentTakesAllDay)(item, this.allDayPanelMode)) {
-        result = true;
-        return false;
-      }
-    });
-    return result;
-  }
-  setDataAccessors(dataAccessors) {
-    this.dataAccessors = dataAccessors;
+    return filteredItems.map(item => (0, _m_appointment_adapter.createAppointmentAdapter)(item, this.dataAccessors, this.timeZoneCalculator)).some(item => (0, _index.isAppointmentTakesAllDay)(item, this.allDayPanelMode));
   }
   _createAllDayAppointmentFilter() {
-    return [[appointment => (0, _index.getAppointmentTakesAllDay)(appointment, this.allDayPanelMode)]];
+    return [[appointment => (0, _index.isAppointmentTakesAllDay)(appointment, this.allDayPanelMode)]];
   }
   _createCombinedFilter(filterOptions) {
     const min = new Date(filterOptions.min);
@@ -84123,13 +84119,13 @@ class AppointmentFilterBaseStrategy {
       } = appointment;
       const startDate = _date2.dateUtilsTs.addOffsets(appointment.startDate, [-viewOffset]);
       const endDate = _date2.dateUtilsTs.addOffsets(appointment.endDate, [-viewOffset]);
-      const appointmentTakesAllDay = (0, _index.getAppointmentTakesAllDay)(appointment, this.allDayPanelMode);
+      const appointmentTakesAllDay = (0, _index.isAppointmentTakesAllDay)(appointment, this.allDayPanelMode);
       if (!hasRecurrenceRule) {
         if (!(endDate >= trimMin && startDate < trimMax || _date.default.sameDate(endDate, trimMin) && _date.default.sameDate(startDate, trimMin))) {
           return false;
         }
       }
-      const appointmentTakesSeveralDays = (0, _m_utils2.getAppointmentTakesSeveralDays)(appointment);
+      const appointmentTakesSeveralDays = (0, _m_utils.getAppointmentTakesSeveralDays)(appointment);
       const isLongAppointment = appointmentTakesSeveralDays || appointmentTakesAllDay;
       if (resources !== null && resources !== void 0 && resources.length && !this._filterAppointmentByResources(appointment.rawAppointment, resources)) {
         return false;
@@ -84138,7 +84134,7 @@ class AppointmentFilterBaseStrategy {
         return false;
       }
       if (hasRecurrenceRule) {
-        const recurrenceException = (0, _m_utils2.getRecurrenceException)(appointment, this.timeZoneCalculator, this.timezone);
+        const recurrenceException = (0, _m_utils.getRecurrenceException)(appointment, this.timeZoneCalculator, this.timezone);
         if (!this._filterAppointmentByRRule(_extends({}, appointment, {
           recurrenceException,
           allDay: appointmentTakesAllDay
@@ -84152,12 +84148,12 @@ class AppointmentFilterBaseStrategy {
         }
       }
       if (!isAllDay && (0, _type.isDefined)(startDayHour) && (!useRecurrence || !filterOptions.isVirtualScrolling)) {
-        if (!(0, _m_utils2.compareDateWithStartDayHour)(startDate, endDate, startDayHour, appointmentTakesAllDay, appointmentTakesSeveralDays)) {
+        if (!(0, _m_utils.compareDateWithStartDayHour)(startDate, endDate, startDayHour, appointmentTakesAllDay, appointmentTakesSeveralDays)) {
           return false;
         }
       }
       if (!isAllDay && (0, _type.isDefined)(endDayHour)) {
-        if (!(0, _m_utils2.compareDateWithEndDayHour)({
+        if (!(0, _m_utils.compareDateWithEndDayHour)({
           startDate,
           endDate,
           startDayHour,
@@ -84227,7 +84223,7 @@ class AppointmentFilterBaseStrategy {
     const appointmentStartDate = appointment.startDate;
     const appointmentEndDate = appointment.endDate;
     const recurrenceProcessor = (0, _m_recurrence.getRecurrenceProcessor)();
-    if (allDay || (0, _m_utils2._appointmentPartInInterval)(appointmentStartDate, appointmentEndDate, startDayHour, endDayHour)) {
+    if (allDay || (0, _m_utils._appointmentPartInInterval)(appointmentStartDate, appointmentEndDate, startDayHour, endDayHour)) {
       const [trimMin, trimMax] = (0, _index.getDatesWithoutTime)(min, max);
       min = trimMin;
       max = new Date(trimMax.getTime() - toMs('minute'));
@@ -84282,10 +84278,29 @@ class AppointmentFilterBaseStrategy {
   }
 }
 exports.AppointmentFilterBaseStrategy = AppointmentFilterBaseStrategy;
-class AppointmentFilterVirtualStrategy extends AppointmentFilterBaseStrategy {
-  get strategyName() {
-    return FilterStrategies.virtual;
-  }
+AppointmentFilterBaseStrategy.strategyName = 'standard';
+
+/***/ }),
+
+/***/ 55964:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+
+Object.defineProperty(exports, "__esModule", ({
+  value: true
+}));
+exports.AppointmentFilterVirtualStrategy = void 0;
+var _query = _interopRequireDefault(__webpack_require__(30771));
+var _date = _interopRequireDefault(__webpack_require__(41380));
+var _date2 = __webpack_require__(55594);
+var _index = __webpack_require__(34396);
+var _m_utils = __webpack_require__(45629);
+var _m_appointment_filter = __webpack_require__(42648);
+function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }
+// TODO Vinogradov refactoring: this module should be refactored :)
+const toMs = _date.default.dateToMilliseconds;
+class AppointmentFilterVirtualStrategy extends _m_appointment_filter.AppointmentFilterBaseStrategy {
   get resources() {
     return this.options.resources;
   }
@@ -84334,20 +84349,20 @@ class AppointmentFilterVirtualStrategy extends AppointmentFilterBaseStrategy {
       groupCount: this.groupCount
     }, preparedItems);
   }
-  filterPreparedItems(_ref4, preparedItems) {
+  filterPreparedItems(_ref, preparedItems) {
     let {
       filterOptions,
       groupCount
-    } = _ref4;
+    } = _ref;
     const combinedFilters = [];
     let itemsToFilter = preparedItems;
     const needPreFilter = groupCount > 0;
     if (needPreFilter) {
       // @ts-expect-error
-      itemsToFilter = itemsToFilter.filter(_ref5 => {
+      itemsToFilter = itemsToFilter.filter(_ref2 => {
         let {
           rawAppointment
-        } = _ref5;
+        } = _ref2;
         for (let i = 0; i < filterOptions.length; ++i) {
           const {
             resources
@@ -84377,6 +84392,7 @@ class AppointmentFilterVirtualStrategy extends AppointmentFilterBaseStrategy {
   }
 }
 exports.AppointmentFilterVirtualStrategy = AppointmentFilterVirtualStrategy;
+AppointmentFilterVirtualStrategy.strategyName = 'virtual';
 
 /***/ }),
 
@@ -87638,7 +87654,7 @@ class BaseRenderingStrategy {
   }
   isAppointmentTakesAllDay(rawAppointment) {
     const adapter = (0, _m_appointment_adapter.createAppointmentAdapter)(rawAppointment, this.dataAccessors, this.timeZoneCalculator);
-    return (0, _index.getAppointmentTakesAllDay)(adapter, this.allDayPanelMode);
+    return (0, _index.isAppointmentTakesAllDay)(adapter, this.allDayPanelMode);
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _getAppointmentParts(geometry, settings) {
@@ -88780,7 +88796,7 @@ class VerticalRenderingStrategy extends _m_strategy_base.default {
     return this.cellWidth;
   }
   isAllDay(appointmentData) {
-    return (0, _index.getAppointmentTakesAllDay)((0, _m_appointment_adapter.createAppointmentAdapter)(appointmentData, this.dataAccessors, this.timeZoneCalculator), this.allDayPanelMode);
+    return (0, _index.isAppointmentTakesAllDay)((0, _m_appointment_adapter.createAppointmentAdapter)(appointmentData, this.dataAccessors, this.timeZoneCalculator), this.allDayPanelMode);
   }
   _getAppointmentMaxWidth() {
     return this.cellWidth - this._getAppointmentDefaultOffset();
@@ -93114,11 +93130,8 @@ class Scheduler extends _ui2.default {
     const workspace = this.getWorkSpace();
     this._filterAppointments();
     workspace.option('allDayExpanded', this._isAllDayExpanded());
-    let viewModel = [];
     // @ts-expect-error
-    if (this._isVisible()) {
-      viewModel = this._getAppointmentsToRepaint();
-    }
+    const viewModel = this._isVisible() ? this._getAppointmentsToRepaint() : [];
     this._appointments.option('items', viewModel);
     this.appointmentDataProvider.cleanState();
   }
@@ -93536,7 +93549,6 @@ class Scheduler extends _ui2.default {
       indicatorTime: this.option('indicatorTime'),
       indicatorUpdateInterval: this.option('indicatorUpdateInterval'),
       shadeUntilCurrentTime: this.option('shadeUntilCurrentTime'),
-      allDayExpanded: this._appointments.option('items'),
       crossScrollingEnabled,
       dataCellTemplate: this.option('dataCellTemplate'),
       timeCellTemplate: this.option('timeCellTemplate'),
@@ -93934,7 +93946,7 @@ class Scheduler extends _ui2.default {
   }
   appointmentTakesAllDay(rawAppointment) {
     const appointment = (0, _m_appointment_adapter.createAppointmentAdapter)(rawAppointment, this._dataAccessors, this.timeZoneCalculator);
-    return (0, _index2.getAppointmentTakesAllDay)(appointment, this._getCurrentViewOption('allDayPanelMode'));
+    return (0, _index2.isAppointmentTakesAllDay)(appointment, this._getCurrentViewOption('allDayPanelMode'));
   }
   dayHasAppointment(day, rawAppointment, trimTime) {
     const getConvertedToTimeZone = date => this.timeZoneCalculator.createDate(date, {
@@ -98727,7 +98739,7 @@ exports.calculateStartViewDate = calculateStartViewDate;
 Object.defineProperty(exports, "__esModule", ({
   value: true
 }));
-exports.splitNumber = exports.setOptionHour = exports.isVerticalGroupingApplied = exports.isTimelineView = exports.isHorizontalView = exports.isHorizontalGroupingApplied = exports.isGroupingByDate = exports.isFirstCellInMonthWithIntervalCount = exports.isDateInRange = exports.isDateAndTimeView = exports.isDataOnWeekend = exports.hasResourceValue = exports.getWeekendsCount = exports.getViewStartByOptions = exports.getVerticalGroupCountClass = exports.getValidCellDateForLocalTimeFormat = exports.getTotalRowCountByCompleteData = exports.getTotalCellCountByCompleteData = exports.getToday = exports.getStartViewDateWithoutDST = exports.getStartViewDateTimeOffset = exports.getSkippedHoursInRange = exports.getOverflowIndicatorColor = exports.getKeyByGroup = exports.getIsGroupedAllDayPanel = exports.getHorizontalGroupCount = exports.getHeaderCellText = exports.getGroupPanelData = exports.getGroupCount = exports.getDisplayedRowCount = exports.getDisplayedCellCount = exports.getDatesWithoutTime = exports.getCellDuration = exports.getCalculatedFirstDayOfWeek = exports.getAppointmentTakesAllDay = exports.getAppointmentRenderingStrategyName = exports.getAppointmentKey = exports.extendGroupItemsForGroupingByDate = exports.calculateViewStartDate = exports.calculateIsGroupedAllDayPanel = exports.calculateDayDuration = exports.calculateCellIndex = void 0;
+exports.splitNumber = exports.setOptionHour = exports.isVerticalGroupingApplied = exports.isTimelineView = exports.isHorizontalView = exports.isHorizontalGroupingApplied = exports.isGroupingByDate = exports.isFirstCellInMonthWithIntervalCount = exports.isDateInRange = exports.isDateAndTimeView = exports.isDataOnWeekend = exports.isAppointmentTakesAllDay = exports.hasResourceValue = exports.getWeekendsCount = exports.getViewStartByOptions = exports.getVerticalGroupCountClass = exports.getValidCellDateForLocalTimeFormat = exports.getTotalRowCountByCompleteData = exports.getTotalCellCountByCompleteData = exports.getToday = exports.getStartViewDateWithoutDST = exports.getStartViewDateTimeOffset = exports.getSkippedHoursInRange = exports.getOverflowIndicatorColor = exports.getKeyByGroup = exports.getIsGroupedAllDayPanel = exports.getHorizontalGroupCount = exports.getHeaderCellText = exports.getGroupPanelData = exports.getGroupCount = exports.getDisplayedRowCount = exports.getDisplayedCellCount = exports.getDatesWithoutTime = exports.getCellDuration = exports.getCalculatedFirstDayOfWeek = exports.getAppointmentRenderingStrategyName = exports.getAppointmentKey = exports.extendGroupItemsForGroupingByDate = exports.calculateViewStartDate = exports.calculateIsGroupedAllDayPanel = exports.calculateDayDuration = exports.calculateCellIndex = void 0;
 var _date = _interopRequireDefault(__webpack_require__(38662));
 var _common = __webpack_require__(17781);
 var _date2 = _interopRequireDefault(__webpack_require__(41380));
@@ -98788,7 +98800,7 @@ const getAppointmentRenderingStrategyName = viewType => {
   return renderingStrategy;
 };
 exports.getAppointmentRenderingStrategyName = getAppointmentRenderingStrategyName;
-const getAppointmentTakesAllDay = (appointmentAdapter, allDayPanelMode) => {
+const isAppointmentTakesAllDay = (appointmentAdapter, allDayPanelMode) => {
   const {
     startDate,
     endDate,
@@ -98810,7 +98822,7 @@ const getAppointmentTakesAllDay = (appointmentAdapter, allDayPanelMode) => {
       return getDurationInHours(startDate, endDate) >= DAY_HOURS;
   }
 };
-exports.getAppointmentTakesAllDay = getAppointmentTakesAllDay;
+exports.isAppointmentTakesAllDay = isAppointmentTakesAllDay;
 const getAppointmentKey = geometry => {
   const {
     left,
@@ -99292,12 +99304,6 @@ Object.defineProperty(exports, "getAppointmentRenderingStrategyName", ({
     return _base.getAppointmentRenderingStrategyName;
   }
 }));
-Object.defineProperty(exports, "getAppointmentTakesAllDay", ({
-  enumerable: true,
-  get: function () {
-    return _base.getAppointmentTakesAllDay;
-  }
-}));
 Object.defineProperty(exports, "getCalculatedFirstDayOfWeek", ({
   enumerable: true,
   get: function () {
@@ -99440,6 +99446,12 @@ Object.defineProperty(exports, "hasResourceValue", ({
   enumerable: true,
   get: function () {
     return _base.hasResourceValue;
+  }
+}));
+Object.defineProperty(exports, "isAppointmentTakesAllDay", ({
+  enumerable: true,
+  get: function () {
+    return _base.isAppointmentTakesAllDay;
   }
 }));
 Object.defineProperty(exports, "isDataOnWeekend", ({
@@ -101893,7 +101905,7 @@ class SchedulerAgenda extends _m_work_space.default {
         this._recalculateAgenda(this._rows);
         break;
       case 'groups':
-        if (!value || !value.length) {
+        if (!(value !== null && value !== void 0 && value.length)) {
           if (this._$groupTable) {
             this._$groupTable.remove();
             this._$groupTable = null;
@@ -101942,7 +101954,10 @@ class SchedulerAgenda extends _m_work_space.default {
   _renderAllDayPanel() {
     return (0, _common.noop)();
   }
-  _toggleAllDayVisibility() {
+  _updateAllDayVisibility() {
+    return (0, _common.noop)();
+  }
+  _updateAllDayHeight() {
     return (0, _common.noop)();
   }
   _initWorkSpaceUnits() {
@@ -101954,7 +101969,7 @@ class SchedulerAgenda extends _m_work_space.default {
   }
   _initGroupTable() {
     const groups = this.option('groups');
-    if (groups && groups.length) {
+    if (groups !== null && groups !== void 0 && groups.length) {
       this._$groupTable = (0, _renderer.default)('<table>').attr('aria-hidden', true).addClass(GROUP_TABLE_CLASS);
     }
   }
@@ -102051,7 +102066,7 @@ class SchedulerAgenda extends _m_work_space.default {
       groupCellCustomContent(cell, cellTextElement, index, data) {
         const container = _dom_adapter.default.createElement('div');
         container.className = getGroupHeaderContentClass;
-        if (cellTemplate && cellTemplate.render) {
+        if (cellTemplate !== null && cellTemplate !== void 0 && cellTemplate.render) {
           cellTemplates.push(cellTemplate.render.bind(cellTemplate, {
             model: {
               data: data.data,
@@ -102155,11 +102170,12 @@ class SchedulerAgenda extends _m_work_space.default {
         const $td = (0, _renderer.default)('<td>');
         (0, _size.setHeight)($td, this._getRowHeight(rowSize));
         if (options.getStartDate) {
-          date = options.getStartDate && options.getStartDate(rowIndex);
+          var _options$getStartDate;
+          date = (_options$getStartDate = options.getStartDate) === null || _options$getStartDate === void 0 ? void 0 : _options$getStartDate.call(options, rowIndex);
           cellDateNumber = _date.default.format(date, 'd');
           cellDayName = _date.default.format(date, _index.formatWeekday);
         }
-        if (cellTemplateOpt && cellTemplateOpt.render) {
+        if (cellTemplateOpt !== null && cellTemplateOpt !== void 0 && cellTemplateOpt.render) {
           const templateOptions = this._prepareCellTemplateOptions(`${cellDateNumber} ${cellDayName}`, date, i, $td);
           cellTemplates.push(cellTemplateOpt.render.bind(cellTemplateOpt, templateOptions));
         } else if (cellDateNumber && cellDayName) {
@@ -102875,10 +102891,10 @@ class SchedulerTimeline extends _m_work_space_indicator.default {
   _createWorkSpaceElements() {
     this._createWorkSpaceScrollableElements();
   }
-  _toggleAllDayVisibility() {
+  _updateAllDayVisibility() {
     return (0, _common.noop)();
   }
-  _changeAllDayVisibility() {
+  _updateAllDayHeight() {
     return (0, _common.noop)();
   }
   _getDateHeaderTemplate() {
@@ -105348,7 +105364,7 @@ class SchedulerWorkSpace extends _m_widget_observer.default {
     const visible = this.isAllDayPanelVisible && !this.isGroupedAllDayPanel();
     if (visible) {
       var _this$virtualScrollin;
-      this._toggleAllDayVisibility(false);
+      this._updateAllDayVisibility();
       const options = _extends({
         viewData: this.viewDataProvider.viewData,
         viewContext: this.getR1ComponentsViewContext(),
@@ -105358,7 +105374,8 @@ class SchedulerWorkSpace extends _m_widget_observer.default {
       _m_utils.utils.renovation.renderComponent(this, this._$allDayTable, _index2.AllDayTableComponent, 'renovatedAllDayPanel', options);
       _m_utils.utils.renovation.renderComponent(this, this._$allDayTitle, _index2.AllDayPanelTitleComponent, 'renovatedAllDayPanelTitle', {});
     }
-    this._toggleAllDayVisibility(true);
+    this._updateAllDayVisibility();
+    this._updateScrollable();
   }
   renderRTimeTable() {
     _m_utils.utils.renovation.renderComponent(this, this._$timePanel, _index2.TimePanelComponent, 'renovatedTimePanel', {
@@ -105517,13 +105534,14 @@ class SchedulerWorkSpace extends _m_widget_observer.default {
           this._initGrouping();
           this.repaint();
         } else if (!this.isRenovatedRender()) {
-          this._toggleAllDayVisibility(true);
+          this._updateAllDayVisibility();
+          this._updateScrollable();
         } else {
           this.renderWorkSpace();
         }
         break;
       case 'allDayExpanded':
-        this._changeAllDayVisibility();
+        this._updateAllDayExpansion();
         this._attachTablesEvents();
         this._updateScrollable();
         break;
@@ -105873,7 +105891,7 @@ class SchedulerWorkSpace extends _m_widget_observer.default {
     return (0, _common.noop)();
   }
   _detachGroupCountClass() {
-    [..._m_classes.VERTICAL_GROUP_COUNT_CLASSES].forEach(className => {
+    _m_classes.VERTICAL_GROUP_COUNT_CLASSES.forEach(className => {
       this.$element().removeClass(className);
     });
   }
@@ -105884,15 +105902,14 @@ class SchedulerWorkSpace extends _m_widget_observer.default {
   _getDateHeaderTemplate() {
     return this.option('dateCellTemplate');
   }
-  _toggleAllDayVisibility(isUpdateScrollable) {
-    const showAllDayPanel = this._isShowAllDayPanel();
-    this.$element().toggleClass(WORKSPACE_WITH_ALL_DAY_CLASS, showAllDayPanel);
-    this._changeAllDayVisibility();
-    isUpdateScrollable && this._updateScrollable();
+  _updateAllDayVisibility() {
+    this.$element().toggleClass(WORKSPACE_WITH_ALL_DAY_CLASS, this._isShowAllDayPanel());
+    this._updateAllDayExpansion();
   }
-  _changeAllDayVisibility() {
+  _updateAllDayExpansion() {
+    const isExpanded = !this.option('allDayExpanded') && this._isShowAllDayPanel();
     this.cache.clear();
-    this.$element().toggleClass(WORKSPACE_WITH_COLLAPSED_ALL_DAY_CLASS, !this.option('allDayExpanded') && this._isShowAllDayPanel());
+    this.$element().toggleClass(WORKSPACE_WITH_COLLAPSED_ALL_DAY_CLASS, isExpanded);
   }
   _getDateTables() {
     return this._$dateTable.add(this._$allDayTable);
@@ -106121,7 +106138,8 @@ class SchedulerWorkSpace extends _m_widget_observer.default {
       getCellData: this._oldRender_getAllDayCellData(index),
       groupIndex: index
     }, true);
-    this._toggleAllDayVisibility(true);
+    this._updateAllDayVisibility();
+    this._updateScrollable();
     this._applyCellTemplates(cellTemplates);
   }
   _renderGroupAllDayPanel() {
@@ -107135,10 +107153,10 @@ class SchedulerWorkSpaceMonth extends _m_work_space_indicator.default {
       super._createWorkSpaceElements();
     }
   }
-  _toggleAllDayVisibility() {
+  _updateAllDayVisibility() {
     return (0, _common.noop)();
   }
-  _changeAllDayVisibility() {
+  _updateAllDayHeight() {
     return (0, _common.noop)();
   }
   // --------------
@@ -142310,8 +142328,11 @@ class ListEdit extends _m_list.ListBase {
       if (e.shiftKey && that.option('itemDragging.allowReordering')) {
         const nextItemIndex = focusedItemIndex + (moveUp ? -1 : 1);
         const $nextItem = editStrategy.getItemElement(nextItemIndex);
-        this.reorderItem(focusedElement, $nextItem);
-        this.scrollToItem(focusedElement);
+        const isMoveFromGroup = this.option('grouped') && (0, _renderer.default)(focusedElement).parent().get(0) !== $nextItem.parent().get(0);
+        if (!isMoveFromGroup) {
+          this.reorderItem(focusedElement, $nextItem);
+          this.scrollToItem(focusedElement);
+        }
         e.preventDefault();
       } else {
         const editProvider = this._editProvider;
@@ -150065,13 +150086,8 @@ class Lookup extends _m_drop_down_list.default {
       onPageLoading: this._pageLoadingHandler.bind(this),
       pageLoadMode: this.option('pageLoadMode'),
       nextButtonText: this.option('nextButtonText'),
-      indicateLoading: this.option('searchEnabled'),
-      onSelectionChanged: this._getSelectionChangedHandler()
+      indicateLoading: this.option('searchEnabled')
     });
-  }
-  _getSelectionChangedHandler() {
-    // @ts-expect-error ts-error
-    return this.option('showSelectionControls') ? this._selectionChangeHandler.bind(this) : _common.noop;
   }
   _listContentReadyHandler() {
     // @ts-expect-error ts-error
@@ -153355,7 +153371,8 @@ class TagBox extends _m_select_box.default {
         delete this._preserveFocusedTag;
       },
       enter(e, options) {
-        const isListItemFocused = this._list && this._list.option('focusedElement') !== null;
+        var _this$_list;
+        const isListItemFocused = ((_this$_list = this._list) === null || _this$_list === void 0 ? void 0 : _this$_list.option('focusedElement')) !== null && this.option('opened') === true;
         const isCustomItem = this.option('acceptCustomValue') && !isListItemFocused;
         if (isCustomItem) {
           e.preventDefault();
@@ -153892,10 +153909,10 @@ class TagBox extends _m_select_box.default {
     _ui.default.log('W1019', maxFilterQueryLength);
   }
   _getFilteredItems(values) {
-    var _this$_loadFilteredIt, _this$_list;
+    var _this$_loadFilteredIt, _this$_list2;
     (_this$_loadFilteredIt = this._loadFilteredItemsPromise) === null || _this$_loadFilteredIt === void 0 || _this$_loadFilteredIt.reject();
     const creator = new _selection_filter.SelectionFilterCreator(values);
-    const listSelectedItems = (_this$_list = this._list) === null || _this$_list === void 0 ? void 0 : _this$_list.option('selectedItems');
+    const listSelectedItems = (_this$_list2 = this._list) === null || _this$_list2 === void 0 ? void 0 : _this$_list2.option('selectedItems');
     // @ts-expect-error ts-error
     const isListItemsLoaded = !!listSelectedItems && this._list._dataController.isLoaded();
     const selectedItems = listSelectedItems || this.option('selectedItems');
@@ -154074,8 +154091,10 @@ class TagBox extends _m_select_box.default {
   }
   _renderTagsImpl() {
     this._renderField();
-    // @ts-expect-error ts-error
-    this.option('selectedItems', this._selectedItems.slice());
+    if (this._shouldUpdateSelectedItems()) {
+      // @ts-expect-error ts-error
+      this.option('selectedItems', this._selectedItems.slice());
+    }
     this._cleanTags();
     const fieldTemplate = this._getFieldTemplate();
     if (!fieldTemplate) {
@@ -154095,8 +154114,8 @@ class TagBox extends _m_select_box.default {
     return selectedItems;
   }
   _getSelectedItemsFromList(values) {
-    var _this$_list2;
-    const listSelectedItems = (_this$_list2 = this._list) === null || _this$_list2 === void 0 ? void 0 : _this$_list2.option('selectedItems');
+    var _this$_list3;
+    const listSelectedItems = (_this$_list3 = this._list) === null || _this$_list3 === void 0 ? void 0 : _this$_list3.option('selectedItems');
     let selectedItems = [];
     if (values.length === (listSelectedItems === null || listSelectedItems === void 0 ? void 0 : listSelectedItems.length)) {
       selectedItems = this._filterSelectedItems(listSelectedItems, values);
@@ -154141,6 +154160,20 @@ class TagBox extends _m_select_box.default {
       this._clearTagFocus();
     }
     (_this$_popup = this._popup) === null || _this$_popup === void 0 || _this$_popup.refreshPosition();
+  }
+  _shouldUpdateSelectedItems() {
+    var _this$_selectedItems, _this$_selectedItems2;
+    const {
+      selectedItems
+    } = this.option();
+    if ((0, _type.isDefined)(selectedItems) && selectedItems.length !== ((_this$_selectedItems = this._selectedItems) === null || _this$_selectedItems === void 0 ? void 0 : _this$_selectedItems.length)) {
+      return true;
+    }
+    const intersection = (0, _array.getIntersection)(selectedItems, this._selectedItems);
+    if (intersection.length !== ((_this$_selectedItems2 = this._selectedItems) === null || _this$_selectedItems2 === void 0 ? void 0 : _this$_selectedItems2.length)) {
+      return true;
+    }
+    return false;
   }
   _renderTagsElements(items) {
     const $multiTag = this._multiTagRequired() && this._renderMultiTag(this._input());
@@ -154356,7 +154389,7 @@ class TagBox extends _m_select_box.default {
     }
   }
   _setValue(value) {
-    var _this$_list3;
+    var _this$_list4;
     if (value === null) {
       return;
     }
@@ -154365,15 +154398,15 @@ class TagBox extends _m_select_box.default {
     } = this.option();
     const useButtons = applyValueMode === 'useButtons';
     const valueIndex = this._valueIndex(value);
-    const values = (useButtons ? ((_this$_list3 = this._list) === null || _this$_list3 === void 0 ? void 0 : _this$_list3.option('selectedItemKeys')) || [] : this._getValue()).slice();
+    const values = (useButtons ? ((_this$_list4 = this._list) === null || _this$_list4 === void 0 ? void 0 : _this$_list4.option('selectedItemKeys')) || [] : this._getValue()).slice();
     if (valueIndex >= 0) {
       values.splice(valueIndex, 1);
     } else {
       values.push(value);
     }
     if (useButtons) {
-      var _this$_list4;
-      (_this$_list4 = this._list) === null || _this$_list4 === void 0 || _this$_list4.option('selectedItemKeys', values);
+      var _this$_list5;
+      (_this$_list5 = this._list) === null || _this$_list5 === void 0 || _this$_list5.option('selectedItemKeys', values);
     } else {
       this.option('value', values);
     }
@@ -154436,8 +154469,8 @@ class TagBox extends _m_select_box.default {
     }
   }
   _refreshSelected() {
-    var _this$_list5;
-    ((_this$_list5 = this._list) === null || _this$_list5 === void 0 ? void 0 : _this$_list5.getDataSource()) && this._list.option('selectedItems', this._selectedItems);
+    var _this$_list6;
+    ((_this$_list6 = this._list) === null || _this$_list6 === void 0 ? void 0 : _this$_list6.getDataSource()) && this._list.option('selectedItems', this._selectedItems);
   }
   _resetListDataSourceFilter() {
     const dataController = this._dataController;
@@ -175091,7 +175124,7 @@ var CollapseExpandDirection;
 Object.defineProperty(exports, "__esModule", ({
   value: true
 }));
-exports["default"] = exports.STEPPER_CONNECTOR_VERTICAL_ORIENTATION_CLASS = exports.STEPPER_CONNECTOR_VALUE_CLASS = exports.STEPPER_CONNECTOR_HORIZONTAL_ORIENTATION_CLASS = exports.STEPPER_CONNECTOR_CLASS = exports.MAX_SIZE = void 0;
+exports["default"] = exports.STEPPER_CONNECTOR_VERTICAL_ORIENTATION_CLASS = exports.STEPPER_CONNECTOR_VALUE_CLASS = exports.STEPPER_CONNECTOR_HORIZONTAL_ORIENTATION_CLASS = exports.STEPPER_CONNECTOR_CONTAINER_CLASS = exports.STEPPER_CONNECTOR_CLASS = exports.MAX_SIZE = void 0;
 var _renderer = _interopRequireDefault(__webpack_require__(64553));
 var _style = __webpack_require__(58515);
 var _dom_component = _interopRequireDefault(__webpack_require__(22331));
@@ -175101,6 +175134,7 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
 const STEPPER_CONNECTOR_CLASS = exports.STEPPER_CONNECTOR_CLASS = 'dx-stepper-connector';
 const STEPPER_CONNECTOR_HORIZONTAL_ORIENTATION_CLASS = exports.STEPPER_CONNECTOR_HORIZONTAL_ORIENTATION_CLASS = 'dx-stepper-connector-horizontal';
 const STEPPER_CONNECTOR_VERTICAL_ORIENTATION_CLASS = exports.STEPPER_CONNECTOR_VERTICAL_ORIENTATION_CLASS = 'dx-stepper-connector-vertical';
+const STEPPER_CONNECTOR_CONTAINER_CLASS = exports.STEPPER_CONNECTOR_CONTAINER_CLASS = 'dx-stepper-connector-container';
 const STEPPER_CONNECTOR_VALUE_CLASS = exports.STEPPER_CONNECTOR_VALUE_CLASS = 'dx-stepper-connector-value';
 const PERCENT_UNIT = '%';
 const FLEX_GROW = 'flexGrow';
@@ -175155,7 +175189,12 @@ class Connector extends _dom_component.default {
     return orientation === _stepper.ORIENTATION.horizontal;
   }
   _renderContent() {
-    (0, _renderer.default)('<div>').addClass(STEPPER_CONNECTOR_VALUE_CLASS).appendTo(this.element());
+    const $container = (0, _renderer.default)('<div>').addClass(STEPPER_CONNECTOR_CONTAINER_CLASS).appendTo(this.element());
+    (0, _renderer.default)('<div>').addClass(STEPPER_CONNECTOR_VALUE_CLASS).appendTo($container);
+  }
+  _clean() {
+    super._clean();
+    this.$element().empty();
   }
   _optionChanged(args) {
     const {
@@ -175187,7 +175226,7 @@ var _default = exports["default"] = Connector;
 Object.defineProperty(exports, "__esModule", ({
   value: true
 }));
-exports["default"] = exports.STEP_TITLE_CLASS = exports.STEP_TEXT_CLASS = exports.STEP_SELECTED_CLASS = exports.STEP_OPTIONAL_MARK_CLASS = exports.STEP_LIST_CLASS = exports.STEP_LABEL_CLASS = exports.STEP_INDICATOR_CLASS = exports.STEP_CLASS = exports.STEPPER_VERTICAL_ORIENTATION_CLASS = exports.STEPPER_ITEM_DATA_KEY = exports.STEPPER_HORIZONTAL_ORIENTATION_CLASS = exports.STEPPER_CLASS = exports.STEPPER_ARIA_LABEL = exports.ORIENTATION = void 0;
+exports["default"] = exports.STEP_TITLE_CLASS = exports.STEP_TEXT_CLASS = exports.STEP_SELECTED_CLASS = exports.STEP_OPTIONAL_MARK_CLASS = exports.STEP_LIST_CLASS = exports.STEP_LABEL_CLASS = exports.STEP_INDICATOR_CLASS = exports.STEP_CLASS = exports.STEPPER_VERTICAL_ORIENTATION_CLASS = exports.STEPPER_ITEM_DATA_KEY = exports.STEPPER_HORIZONTAL_ORIENTATION_CLASS = exports.STEPPER_CLASS = exports.ORIENTATION = void 0;
 var _message = _interopRequireDefault(__webpack_require__(4671));
 var _component_registrator = _interopRequireDefault(__webpack_require__(92848));
 var _renderer = _interopRequireDefault(__webpack_require__(64553));
@@ -175214,7 +175253,6 @@ const STEP_LABEL_CLASS = exports.STEP_LABEL_CLASS = 'dx-step-label';
 const STEP_TITLE_CLASS = exports.STEP_TITLE_CLASS = 'dx-step-title';
 const STEP_OPTIONAL_MARK_CLASS = exports.STEP_OPTIONAL_MARK_CLASS = 'dx-step-optional-mark';
 const STEPPER_ITEM_DATA_KEY = exports.STEPPER_ITEM_DATA_KEY = 'dxStepperItemData';
-const STEPPER_ARIA_LABEL = exports.STEPPER_ARIA_LABEL = 'stepper';
 const ORIENTATION = exports.ORIENTATION = {
   horizontal: 'horizontal',
   vertical: 'vertical'
@@ -175357,7 +175395,6 @@ class Stepper extends _m_collection_widget.default {
   _init() {
     super._init();
     this.setAria('role', 'tablist');
-    this.setAria('label', STEPPER_ARIA_LABEL);
     this._appendStepsContainer();
   }
   _initMarkup() {
@@ -175402,8 +175439,10 @@ class Stepper extends _m_collection_widget.default {
     (0, _renderer.default)(this.element()).append(this._$stepsContainer);
   }
   _setAriaOrientation() {
-    const orientation = this._isHorizontalOrientation() ? ORIENTATION.horizontal : ORIENTATION.vertical;
-    this.setAria('orientation', orientation, (0, _renderer.default)(this.element()));
+    const {
+      orientation
+    } = this.option();
+    this.setAria('orientation', orientation);
   }
   _toggleOrientationClass() {
     (0, _renderer.default)(this.element()).toggleClass(STEPPER_HORIZONTAL_ORIENTATION_CLASS, this._isHorizontalOrientation()).toggleClass(STEPPER_VERTICAL_ORIENTATION_CLASS, !this._isHorizontalOrientation());
@@ -235403,7 +235442,7 @@ class Gantt extends _ui.default {
   _sortAndFilter() {
     var _this$_savedSortFilte, _this$_savedSortFilte2, _this$_savedSortFilte3;
     const treeList = this._treeList;
-    const columns = treeList.getVisibleColumns();
+    const columns = treeList.getColumns();
     const sortedColumns = columns.filter(c => c.sortIndex > -1);
     const sortedState = sortedColumns.map(c => ({
       sortIndex: c.sortIndex,
