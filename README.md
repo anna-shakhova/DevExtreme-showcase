@@ -10,5 +10,7 @@
 
 25.1 T1282693 (list group collapse): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1282693/dx.all.js
 
+25.1 stepper: https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/stepper/dx.all.js
+
 ### css
 25.1 stepper https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/css/stepper/dx.fluent.blue.light.css
