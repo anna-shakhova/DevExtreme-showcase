@@ -12,5 +12,7 @@
 
 25.1 stepper: https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/stepper/dx.all.js
 
+25.1 menuFocus: https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/menuFocus/dx.all.js
+
 ### css
 25.1 stepper https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/css/stepper/dx.fluent.blue.light.css
