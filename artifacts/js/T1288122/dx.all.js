@@ -274152,11 +274152,12 @@ const BaseGauge = exports.BaseGauge = _m_base_widget.default.inherit({
       return true;
     }
     if (this._changes.has('TITLE')) {
-      var _this$_titleRectCache, _this$_titleRectCache2;
+      var _this$_titleRectCache, _this$_titleRectCache2, _this$_titleRectCache3;
       const hasTitleHeightChanged = this._title._boundingRect.height !== ((_this$_titleRectCache = this._titleRectCache) === null || _this$_titleRectCache === void 0 ? void 0 : _this$_titleRectCache.height);
       const hasTitleYChanged = this._title._boundingRect.y !== ((_this$_titleRectCache2 = this._titleRectCache) === null || _this$_titleRectCache2 === void 0 ? void 0 : _this$_titleRectCache2.y);
+      const hasVerticalAlignmentChanged = this._title._boundingRect.verticalAlignment !== ((_this$_titleRectCache3 = this._titleRectCache) === null || _this$_titleRectCache3 === void 0 ? void 0 : _this$_titleRectCache3.verticalAlignment);
       this._titleRectCache = null;
-      return hasTitleHeightChanged || hasTitleYChanged;
+      return hasTitleHeightChanged || hasTitleYChanged || hasVerticalAlignmentChanged;
     }
     return true;
   },
