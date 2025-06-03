@@ -18,3 +18,5 @@
 
 ### css
 25.1 stepper https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/css/stepper/dx.fluent.blue.light.css
+
+25.1 ds https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/css/ds/dx.fluent.blue.light.css
