@@ -18,6 +18,8 @@
 
 25.1 T1295525 (chart axes synchronization): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1295525/dx.all.js
 
+25.2 T1298074 (list scroll): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1298074/dx.all.js
+
 ### css
 25.1 stepper https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/css/stepper/dx.fluent.blue.light.css
 
