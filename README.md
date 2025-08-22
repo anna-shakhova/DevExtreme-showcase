@@ -20,6 +20,8 @@
 
 25.2 T1298074 (list scroll): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1298074/dx.all.js
 
+25.2 T1304112 (chart candlestick): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1304112/dx.all.js
+
 ### css
 25.1 stepper https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/css/stepper/dx.fluent.blue.light.css
 
