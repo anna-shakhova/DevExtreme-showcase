@@ -32,3 +32,5 @@
 25.1 ds https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/css/ds/dx.fluent.blue.light.css
 
 25.1 ds tokens https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/css/dsTokens/dx.fluent.blue.light.css
+
+test
