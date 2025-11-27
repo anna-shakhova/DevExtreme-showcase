@@ -28,6 +28,8 @@
 
 25.2 form validate group: https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/formValidateGroup/dx.all.js
 
+25.2 T1314606 (chart zoom scroll): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1314606/dx.all.js
+
 ### css
 25.1 stepper https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/css/stepper/dx.fluent.blue.light.css
 
