@@ -32,6 +32,8 @@
 
 25.2 T1315301 (chart visual range): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1315301/dx.all.js
 
+26.1 treelist remote pagination: https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/treelistRemotePagination/dx.all.js
+
 ### css
 25.1 stepper https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/css/stepper/dx.fluent.blue.light.css
 
