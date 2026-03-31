@@ -2,6 +2,8 @@
 
 ## Artifacts
 ### js
+26.1 T1325181 (dataGrid grouping with virtual scroll): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1325181/dx.all.js
+
 26.1 T1317039 (dataGrid band columns resize): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1317039/dx.all.js
 
 26.1 treelist remote pagination: https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/treelistRemotePagination/dx.all.js
