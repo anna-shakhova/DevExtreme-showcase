@@ -2,6 +2,8 @@
 
 ## Artifacts
 ### js
+26.2 T1336240 (dataGrid focus with virtual scrolling and async render): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1336240/dx.all.js
+
 26.1 T1325181 (dataGrid grouping with virtual scroll): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1325181/dx.all.js
 
 26.1 T1317039 (dataGrid band columns resize): https://anna-shakhova.github.io/DevExtreme-showcase/artifacts/js/T1317039/dx.all.js
